@@ -6,7 +6,7 @@ from gimgurpython import ImgurClient
 import dropbox
 import os
 
-def convertDecklistToJSON(decklist, deckName, hires, reprint, nocache=False, imgurId=None, dropboxToken=None, output='', basicSet=None):
+def convertDecklistToJSON(decklist, deckName, hires, reprint, nocache=False, imgurId=None, dropboxToken=None, output='', basicSet=None, hostUrl=None):
     """
     Converts a given decklist to the JSON format used by Tabletop Simulator, as well
     as generating the required images. The decklist is assumed to be a list of strings.
@@ -21,13 +21,13 @@ def convertDecklistToJSON(decklist, deckName, hires, reprint, nocache=False, img
 
     deckObjects = []
     posX = 0.0
-    deckObjects.append(generateDeckObjectFromProcessedDecklist(processedDecklist, deckName, posX, hires, imgurId=imgurId, dropboxToken=dropboxToken, output=output))
+    deckObjects.append(generateDeckObjectFromProcessedDecklist(processedDecklist, deckName, posX, hires, imgurId=imgurId, dropboxToken=dropboxToken, output=output, hostUrl=hostUrl))
     posX += 4.0
     if (processedDecklistSideboard):
-        deckObjects.append(generateDeckObjectFromProcessedDecklist(processedDecklistSideboard, deckName+'-sideboard', posX, hires, imgurId=imgurId, dropboxToken=dropboxToken, output=output))
+        deckObjects.append(generateDeckObjectFromProcessedDecklist(processedDecklistSideboard, deckName+'-sideboard', posX, hires, imgurId=imgurId, dropboxToken=dropboxToken, output=output, hostUrl=hostUrl))
         posX += 4.0
     if (processedExtraCards):
-        deckObjects.append(generateDeckObjectFromProcessedDecklist(processedExtraCards, deckName+'-extra', posX, hires, doubleSided=True, imgurId=imgurId, dropboxToken=dropboxToken, output=output))
+        deckObjects.append(generateDeckObjectFromProcessedDecklist(processedExtraCards, deckName+'-extra', posX, hires, doubleSided=True, imgurId=imgurId, dropboxToken=dropboxToken, output=output, hostUrl=hostUrl))
 
     return {'ObjectStates':deckObjects}
 
@@ -45,7 +45,7 @@ def convertSetToDraftJSON(setName, packCount, hires, imgurId, dropboxToken, outp
 
     return {'ObjectStates':deckObjects}
 
-def generateDeckObjectFromProcessedDecklist(processedDecklist, deckName, posX, hires, doubleSided=False, imgurId=None, dropboxToken=None, output=''):
+def generateDeckObjectFromProcessedDecklist(processedDecklist, deckName, posX, hires, doubleSided=False, imgurId=None, dropboxToken=None, output='', hostUrl=None):
     """
     Downloads the cards and creates the TTS deck object for a given processed decklist.
     """
@@ -54,7 +54,7 @@ def generateDeckObjectFromProcessedDecklist(processedDecklist, deckName, posX, h
     print('Creating deck images')
     deckImageNames = images.createDeckImages(processedDecklist, deckName, hires, doubleSided, output)
     print('Creating deck object')
-    deckObject = createDeckObject(processedDecklist, deckName, deckImageNames, posX, output, imgurId, dropboxToken)
+    deckObject = createDeckObject(processedDecklist, deckName, deckImageNames, posX, output, imgurId, dropboxToken, hostUrl)
     if imgurId or dropboxToken:
         print('Deleting local deck images')
         for deckImageName in deckImageNames:
@@ -64,7 +64,7 @@ def generateDeckObjectFromProcessedDecklist(processedDecklist, deckName, posX, h
     return deckObject
 
 
-def createDeckObject(processedDecklist, deckName, deckImageNames, posX, output='', imgurId=None, dropboxToken=None):
+def createDeckObject(processedDecklist, deckName, deckImageNames, posX, output='', imgurId=None, dropboxToken=None, hostUrl=None):
     """
     Creates a TTS deck object from a given processed decklist.
     """
@@ -96,12 +96,12 @@ def createDeckObject(processedDecklist, deckName, deckImageNames, posX, output='
     customDeckIndex = 1
     for deckImageName in deckImageNames:
 
-        faceUrl = getDeckUrl(deckImageName[0], output, imgurId, dropboxToken)
+        faceUrl = getDeckUrl(deckImageName[0], output, imgurId, dropboxToken, hostUrl)
 
         uniqueBack = False
         if len(deckImageName) == 2:
             uniqueBack = True
-            backUrl = getDeckUrl(deckImageName[1], output, imgurId, dropboxToken)
+            backUrl = getDeckUrl(deckImageName[1], output, imgurId, dropboxToken, hostUrl)
         else:
             backUrl = 'https://i.imgur.com/P7qYTcI.png'
 
@@ -111,11 +111,13 @@ def createDeckObject(processedDecklist, deckName, deckImageNames, posX, output='
     return deckObject
 
 
-def getDeckUrl(deckImage, output, imgurId, dropboxToken):
+def getDeckUrl(deckImage, output, imgurId, dropboxToken, hostUrl):
     if (dropboxToken):
         return uploadToDropbox(deckImage, dropboxToken, output)
     if (imgurId):
         return uploadToImgur(deckImage, imgurId, output)
+    if (hostUrl):
+        return hostUrl + '/' + deckImage
     return '<REPLACE WITH URL TO ' + deckImage + '>'
 
 def uploadToImgur(deckImage, imgurId, output):

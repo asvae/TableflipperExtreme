@@ -2,6 +2,7 @@ import re
 from . import scryfall
 from . import queue
 import random
+import json
 
 basics = {
         'guru':{
@@ -29,7 +30,7 @@ basics = {
             'forest': {'name':'Forest','set':'10e','number':'381'},
             'island': {'name':'Island','set':'10e','number':'369'},
             'mountain': {'name':'Mountain','set':'10e','number':'376'},
-            'plains': {'name':'Plains','set':'10e','number':'365'},
+            'plains': {'name':'Plains','set':'m21','number':'261'},
             'swamp': {'name':'Swamp','set':'10e','number':'372'}
             },
         'guay':{
@@ -138,6 +139,8 @@ def generateProcessedCardEntryFromCardInfo(cardInfo, cardName=None):
                 frontFaceUrl = stripUselessNumbers(imageUrl)
             else:
                 backFaceUrl = stripUselessNumbers(imageUrl)
+        print('!!!!frontFaceUrl: ' + frontFaceUrl)
+        print('!!!!backFaceUrl: ' + backFaceUrl)
         cardEntry['image_url'] = frontFaceUrl
         extraCardEntry = {}
         extraCardEntry['name'] = cardInfo['name']
@@ -257,11 +260,11 @@ def generateDraftPackLists(setName, packCount):
             rarity = cardInfo['rarity']
             if rarity == 'mythic':
                 mythics.append(cardEntry)
-            elif: rarity == 'rare':
+            elif rarity == 'rare':
                 rares.append(cardEntry)
-            elif: rarity == 'uncommon':
+            elif rarity == 'uncommon':
                 uncommons.append(cardEntry)
-            elif: rarity == 'common':
+            elif rarity == 'common':
                 commons.append(cardEntry)
 
     packIndex = 0
@@ -279,7 +282,7 @@ def generateDraftPackLists(setName, packCount):
             pack.append(rares[0])
         packs.append(pack)
         packIndex = packIndex + 1
-    
+
     return packs
 
 

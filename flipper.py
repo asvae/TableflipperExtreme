@@ -14,6 +14,9 @@ from gimgurpython import ImgurClient
 from gimgurpython.helpers.error import ImgurClientError
 import dropbox
 from time import gmtime, strftime
+import os
+
+print(os.getcwd())
 
 def initApp():
     if getattr(sys, 'frozen', False) :
@@ -26,10 +29,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-n','--name', help='Name of the deck')
     parser.add_argument('-o','--output', help='Output folder for the deck files')
+    parser.add_argument('--draft', help='Generate a draft deck with number specified.')
     parser.add_argument('--hires', help='Use high resolution versions of card images. Causes very large file sizes', action='store_true')
     parser.add_argument('--reprints', help='Use the latest reprints of the cards', action='store_true')
     parser.add_argument('--nocache', help='Do not use local cache for scryfall', action='store_true')
     parser.add_argument('--imgur', help="Imgur client ID for Imgur integration. See README.md for details. Doesn't work with --hires.")
+    parser.add_argument('--hostUrl', help="Host url for you images, if provided, will be appended to image url.")
     parser.add_argument('--dropbox', help='Dropbox oAuth2 token for Dropbox integration.')
     parser.add_argument('--basic', help='Which basics to use. Allowed values: guru, unstable, alpha, core, guay')
     parser.add_argument('input', help='Filename or URL of the decklist')
@@ -44,6 +49,7 @@ def main():
     nocache = args.nocache
     imgur = args.imgur
     dropbox = args.dropbox
+    hostUrl = args.hostUrl
     output = args.output
     if output == None:
         output = ''
@@ -55,7 +61,7 @@ def main():
         print('--basic must be one of the following values: guru, unstable, alpha, core, guay')
         return
 
-    generate(args.input, deckName, hires, reprint, nocache, imgur, dropbox, output, basicSet)
+    generate(args.input, deckName, hires, reprint, nocache, imgur, dropbox, output, basicSet, hostUrl)
 
 def generateDraft(setName, packCount, hires=False, imgurId=None, dropboxToken=None, output=''):
     try: 
@@ -75,7 +81,7 @@ def generateDraft(setName, packCount, hires=False, imgurId=None, dropboxToken=No
         print(errorMessage)
         traceback.print_tb(sys.exec_info()[2])
 
-def generate(inputStr, deckName, hires=False, reprint=False, nocache=False, imgurId=None, dropboxToken=None,output='',basicSet=None):
+def generate(inputStr, deckName, hires=False, reprint=False, nocache=False, imgurId=None, dropboxToken=None,output='',basicSet=None, hostUrl=None):
 
     try: 
         if not checkIntegrations(hires, imgurId, dropboxToken):
@@ -86,7 +92,7 @@ def generate(inputStr, deckName, hires=False, reprint=False, nocache=False, imgu
             return
 
         print('Processing decklist')
-        ttsJson = converter.convertDecklistToJSON(decklist, deckName, hires, reprint, nocache, imgurId, dropboxToken, output, basicSet)
+        ttsJson = converter.convertDecklistToJSON(decklist, deckName, hires, reprint, nocache, imgurId, dropboxToken, output, basicSet, hostUrl)
         ttsJsonFilename = os.path.join(output, deckName+'.json')
         with open(ttsJsonFilename, 'w',encoding='utf8') as outfile:
             json.dump(ttsJson, outfile, indent=2)
@@ -180,6 +186,15 @@ def getDecklist(inputStr):
             bodyEnd = re.search('</body>', deckboxHtml).start()
             deckboxHtmlBody = deckboxHtml[bodyStart:bodyEnd]
             decklist = deckboxHtmlBody.replace('<p>','').replace('</p>','').replace('<strong>','').replace('</strong>','').split('<br/>')
+        elif re.search('scryfall.com', inputStr):
+            # Scryfall set
+            setName = inputStr.split("sets/", 1)[1]
+            response = requests.get('https://api.scryfall.com/sets/' + setName)
+            cardCount = json.loads(response.text)['card_count']
+            print('Getting scryfall set ' + setName + ' with ' + str(cardCount) + ' cards in it.')
+            decklist = []
+            for i in range(cardCount):
+                decklist.append('https://scryfall.com/card/' + setName + '/' + str(i + 1))
         elif re.search('tappedout.net', inputStr):
             #Tappedout URL
             if inputStr.find('?') > 0:

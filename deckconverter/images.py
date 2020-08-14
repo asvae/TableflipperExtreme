@@ -2,6 +2,7 @@ import os
 import requests
 import shutil
 import subprocess
+import json
 from . import queue
 import hashlib
 
@@ -101,7 +102,9 @@ def createDeckImages(processedDecklist, deckName, hires, doubleSided, output='')
             frontSideImageNames = []
             backSideImageNames = []
             for card in chunk:
+                print ('!!! card: ' + json.dumps(card))
                 imageNames = generateCardImageNames(card)
+                print ('!!! imageNames: ' + json.dumps(imageNames))
                 frontSideImageNames.append(imageNames[0])
                 backSideImageNames.append(imageNames[1])
             frontDeckImageName = deckName+'_front_image_'+str(imageIndex)+".jpg"
@@ -124,6 +127,7 @@ def callMontage(imageNames, deckImageName, hires, output=''):
     global montagePath
     imagePath = os.path.join(output, deckImageName)
     if (hires):
+        # subprocess.call([montagePath] + imageNames + ['-rotate',  '90', '-geometry', '70%x70%+0+0', '-tile', '10x7', imagePath])
         subprocess.call([montagePath] + imageNames + ['-geometry', '100%x100%+0+0', '-tile', '10x7', imagePath])
     else:
         subprocess.call([montagePath] + imageNames + ['-geometry', '50%x50%+0+0', '-tile', '10x7', imagePath])

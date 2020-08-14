@@ -8,3 +8,5 @@ imageCache/
 *.pyc
 __pycache__/
 .idea
+/packs/
+Tabletop Simulator Saved Objects.lnk

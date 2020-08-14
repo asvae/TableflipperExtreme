@@ -20,6 +20,14 @@ For a list of available options, run `python flipper.py --help`
 
 ## Usage
 
+!!! ASVA INSTRUCTION !!!
+Use ubuntu.
+```bash
+python3 flipper.py -n thb --hires --hostUrl http://mtg.asva.by/packs/thb packs/thb/thb.txt
+python3 flipper.py -n c19 --hires --hostUrl http://mtg.asva.by/packs/c19 packs/c19/tc19.txt
+python3 flipper.py -n jmp-basri --hires --hostUrl http://mtg.asva.by/packs/jmp-basri packs/jmp/jmp-basri.txt
+```
+
 TableflipperExtreme supports two ways of importing deck data: as plaintext files or from URLs. [Delicious example 8-Rack list](http://tappedout.net/mtg-decks/mono-black-8-rack-modern-discard/) created by The Professor from [Tolarian Community College](https://www.youtube.com/user/tolariancommunity).
 
 ### Plaintext
