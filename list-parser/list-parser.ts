@@ -6,7 +6,7 @@ const got = require ('got')
 import * as crypto from "crypto"
 import { generateLands } from './src/random-lands-generator'
 import { isJmpLand, convertJmpLand } from './src/jmp-land-converter'
-import { generateTTSDecks } from './src/python-scrip-helpers'
+import { generateTTSDecks } from './src/python-script-helpers'
 
 const url = 'https://magic.wizards.com/en/articles/archive/feature/jumpstart-decklists-2020-06-18'
 

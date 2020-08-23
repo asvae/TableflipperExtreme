@@ -14,3 +14,5 @@ export class Deck {
   title: string = ''
   cardSets: CardSet[] = []
 }
+
+export type CardColor = 'W' | 'U' | 'B' | 'R' | 'G'

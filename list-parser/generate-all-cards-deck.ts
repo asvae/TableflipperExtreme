@@ -1,26 +1,39 @@
-import { CardSet, Deck } from './src/types'
-import { generateTTSDecks } from './src/python-scrip-helpers'
+import { Deck, CardColor } from './src/types'
+import { generateTTSDecks } from './src/python-script-helpers'
+import { ScryfallCard } from './src/scryfall-types'
+import { filterByColor } from './src/scryfall-helpers'
+import { sendDeckToServer, sendDeckToGameFiles } from './src/server-helpers'
 
-const fs = require ('fs')
+const fs = require('fs')
 
 export const loadAllDecksFromScryfallBackup = () => {
-  return JSON.parse(fs.readFileSync('./tmp/oracle-cards-20200809050656.json'))
+  return JSON.parse(fs.readFileSync('./tmp/oracle-cards-20200809050656.json')) as ScryfallCard[]
 }
 
 ;(async () => {
   const allCards = loadAllDecksFromScryfallBackup()
+  const colors: CardColor[] = ['U']
+
   const deck: Deck = {
     title: 'AllTheCards',
-    cardSets: allCards.map(card => [1, card.name]).splice(0, 400),
+    cardSets: filterByColor(allCards, colors).map(card => [1, card.name] as [number, string]).splice(0, 500),
+    // cardSets: allCards.map(card => [1, card.name]),
   }
-  await generateTTSDecks(deck)
-  console.log(`${deck.cardSets.length}-card deck created. Congrats! You're very good cojer.`)
+  console.log(`Deck has ${deck.cardSets.length} card sets.`)
 
-  // const decks = await loadDecksFromMagicSite()
-  // decks.forEach(replaceLands)
-  //
-  // for (const i in decks) {
-  //   await generasateTTSDecks(decks[i])
-  //   console.log(`Deck ${decks[i].title} created. Congrats! You're very good cojer.`)
-  // }
+  console.log(`Generating deck...`)
+
+  const deckPath = await generateTTSDecks(deck)
+
+  console.log(`Deck "${deck.title}" with ${deck.cardSets.length} cards was generated.`)
+
+  console.log(`Sending the deck to server...`)
+
+  await sendDeckToServer(deckPath)
+
+  console.log(`Copying files to TTS folder...`)
+
+  await sendDeckToGameFiles(deckPath, deck.title)
+
+  console.log(`All good. Your cojery is brilliant!`)
 })()
