@@ -5,6 +5,8 @@ from deckconverter import converter
 from deckconverter import scryfall
 from deckconverter import queue
 from deckconverter import images
+from deckconverter import logger
+from deckconverter.logger import *
 import argparse
 import requests
 import re
@@ -16,15 +18,19 @@ import dropbox
 from time import gmtime, strftime
 import os
 
-print(os.getcwd())
+# print(os.getcwd())
 
 def initApp():
     if getattr(sys, 'frozen', False) :
         os.chdir(os.path.dirname(sys.executable))
     else:
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
+# -n jmp-basri --hires --hostUrl http://mtg.asva.by/packs/jmp-basri packs/jmp/jmp-basri.txt
+
+LOG_PATH = ''
 
 def main():
+    global LOG_PATH
     initApp()
     parser = argparse.ArgumentParser()
     parser.add_argument('-n','--name', help='Name of the deck')
@@ -33,6 +39,7 @@ def main():
     parser.add_argument('--hires', help='Use high resolution versions of card images. Causes very large file sizes', action='store_true')
     parser.add_argument('--reprints', help='Use the latest reprints of the cards', action='store_true')
     parser.add_argument('--nocache', help='Do not use local cache for scryfall', action='store_true')
+    parser.add_argument('--ignoreMissing', help='Skip errors', action='store_true')
     parser.add_argument('--imgur', help="Imgur client ID for Imgur integration. See README.md for details. Doesn't work with --hires.")
     parser.add_argument('--hostUrl', help="Host url for you images, if provided, will be appended to image url.")
     parser.add_argument('--dropbox', help='Dropbox oAuth2 token for Dropbox integration.')
@@ -47,10 +54,13 @@ def main():
     hires = args.hires
     reprint = args.reprints
     nocache = args.nocache
+    ignore_missing = args.ignoreMissing
     imgur = args.imgur
     dropbox = args.dropbox
     hostUrl = args.hostUrl
     output = args.output
+
+
     if output == None:
         output = ''
     elif not os.path.isdir(output):
@@ -61,14 +71,39 @@ def main():
         print('--basic must be one of the following values: guru, unstable, alpha, core, guay')
         return
 
-    generate(args.input, deckName, hires, reprint, nocache, imgur, dropbox, output, basicSet, hostUrl)
+
+    # =========================     DEBUGGING   ================================
+    # deckName = "Test_deck"
+    # reprint = False
+    # nocache = False
+    # hires = True
+    # imgur = None
+    # dropbox = None
+    # hostUrl = "http://mtg.asva.by/packs/jmp-basri"
+    # output = None
+    # ignore_missing = True
+    #
+    # if output == None:
+    #     output = ''
+    # elif not os.path.isdir(output):
+    #     print('Output path not valid! Path: ' + output)
+    #     return
+    # basicSet = None
+    # if basicSet != None and not basicSet in ['guru', 'unstable', 'alpha', 'core', 'guay']:
+    #     print('--basic must be one of the following values: guru, unstable, alpha, core, guay')
+    #     return
+    # =======================   DEBUGGING END   ===============================
+
+    logger.set_logging_path(os.path.join(output, deckName+'.log'))
+
+    generate(args.input, deckName, hires, reprint, nocache, imgur, dropbox, output, basicSet, hostUrl, ignore_missing)
 
 def generateDraft(setName, packCount, hires=False, imgurId=None, dropboxToken=None, output=''):
     try: 
         if not checkIntegrations(hires, imgurId, dropboxToken):
             return
 
-        ttsJson = converter.convertSetToDraftJSON(setname, packCount, hires, imgurId, dropboxToken, output)
+        ttsJson = converter.convertSetToDraftJSON(setName, packCount, hires, imgurId, dropboxToken, output)
         ttsJsonFilename = os.path.join(output, setName+'-draft-'+strftime("%Y%m%d%H%M%S", gmtime())+'.json')
         with open(ttsJsonFilename, 'w',encoding='utf8') as outfile:
             json.dump(ttsJson, outfile, indent=2)
@@ -78,10 +113,11 @@ def generateDraft(setName, packCount, hires=False, imgurId=None, dropboxToken=No
         # Handle random uncaught exceptions "gracefully"
         errorMessage = 'Error: ' + sys.exc_info()[0].__name__
         queue.sendMessage({'type':'error', 'text':errorMessage})
-        print(errorMessage)
-        traceback.print_tb(sys.exec_info()[2])
+        error(errorMessage)
+        traceback.print_tb(sys.exc_info()[2])
 
-def generate(inputStr, deckName, hires=False, reprint=False, nocache=False, imgurId=None, dropboxToken=None,output='',basicSet=None, hostUrl=None):
+def generate(inputStr, deckName, hires=False, reprint=False, nocache=False, imgurId=None, dropboxToken=None,output='',basicSet=None,
+             hostUrl=None, ignore_missing=None):
 
     try: 
         if not checkIntegrations(hires, imgurId, dropboxToken):
@@ -91,19 +127,20 @@ def generate(inputStr, deckName, hires=False, reprint=False, nocache=False, imgu
         if decklist == None:
             return
 
-        print('Processing decklist')
-        ttsJson = converter.convertDecklistToJSON(decklist, deckName, hires, reprint, nocache, imgurId, dropboxToken, output, basicSet, hostUrl)
+        info('Processing decklist')
+        ttsJson = converter.convertDecklistToJSON(decklist, deckName, hires, reprint, nocache, imgurId, dropboxToken, output, basicSet,
+                                                  hostUrl, ignore_missing)
         ttsJsonFilename = os.path.join(output, deckName+'.json')
         with open(ttsJsonFilename, 'w',encoding='utf8') as outfile:
             json.dump(ttsJson, outfile, indent=2)
-        queue.sendMessage({'type':'done'})
-        print('All done')
+        # queue.sendMessage({'type':'done'})
+        info('All done')
     except:
         # Handle random uncaught exceptions "gracefully"
         errorMessage = 'Error: ' + sys.exc_info()[0].__name__
         queue.sendMessage({'type':'error', 'text':errorMessage})
-        print(errorMessage)
-        traceback.print_tb(sys.exec_info()[2])
+        error(errorMessage)
+        traceback.print_tb(sys.exc_info()[2])
 
 def checkIntegrations(hires, imgurId, dropboxToken):
     # Only one integration at a time, please

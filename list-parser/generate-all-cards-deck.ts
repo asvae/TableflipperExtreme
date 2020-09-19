@@ -1,14 +1,10 @@
 import { Deck, CardColor } from './src/types'
 import { generateTTSDecks } from './src/python-script-helpers'
-import { ScryfallCard } from './src/scryfall-types'
-import { filterByColor } from './src/scryfall-helpers'
+import {
+  filterByColor,
+  loadAllDecksFromScryfallBackup,
+} from './src/scryfall-helpers'
 import { sendDeckToServer, sendDeckToGameFiles } from './src/server-helpers'
-
-const fs = require('fs')
-
-export const loadAllDecksFromScryfallBackup = () => {
-  return JSON.parse(fs.readFileSync('./tmp/oracle-cards-20200809050656.json')) as ScryfallCard[]
-}
 
 ;(async () => {
   const allCards = loadAllDecksFromScryfallBackup()

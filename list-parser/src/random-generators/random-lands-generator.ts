@@ -1,5 +1,5 @@
-import { LandType, ScryfallUrl } from './types'
-import { popRandomValueFromArray } from './helpers'
+import { LandType, ScryfallUrl } from '../types'
+import { popRandomValueFromArray } from '../helpers'
 
 const lands: Record<LandType, ScryfallUrl[]> = {
   [LandType.plains]: [

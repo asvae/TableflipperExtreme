@@ -1,11 +1,10 @@
 // Show how many cards each color has.
 
-import {
-  loadAllDecksFromScryfallBackup,
-} from '../../generate-all-cards-deck'
-
 import { allColorCombinations } from '../mtg-helpers'
-import { filterByColor } from '../scryfall-helpers'
+import {
+  filterByColor,
+  loadAllDecksFromScryfallBackup,
+} from '../scryfall-helpers'
 import { CardColor } from '../types'
 
 (async () => {

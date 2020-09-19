@@ -3,7 +3,9 @@ from . import scryfall
 from . import queue
 import random
 import json
-
+import traceback
+import sys
+from .logger import *
 basics = {
         'guru':{
             'forest': {'name':'Forest','set':'pgru','number':'1'},
@@ -41,7 +43,7 @@ basics = {
             'swamp': {'name':'Swamp','set':'c16','number':'343'}
             }
         }
-def processDecklist(decklist, reprint=False, basicSet=None):
+def processDecklist(decklist, reprint=False, basicSet=None, ignore_missing=None):
     """
     Processes a given decklist into a "processed decklist" form. This processed form is a list of maps that detail the
     name, set and collector's number of a card, as well as optionally the image url(s) of the card.
@@ -53,49 +55,57 @@ def processDecklist(decklist, reprint=False, basicSet=None):
     lineNumber = 1
     lineCount = len(decklist)
     for line in decklist:
-        if queue.flipperQueue:
-            queue.flipperQueue.put({'type':'message','text':'Processing line ('+str(lineNumber)+'/'+str(lineCount)+')'})
-        lineNumber += 1
-        # Checking if we are in sideboard territory.
-        if line.strip().lower() == 'sideboard:':
-            print('Switching to sideboard')
-            sideboard = True
-            continue;
-        cardName, count = parseDecklistLine(line.strip())
-        if cardName == None:
-            print('Skipping empty line')
-            continue
-
-        if re.match('https://scryfall.com', cardName):
-            # It's a URL!
-            url = 'https://api.' + cardName[8:].replace('card','cards')
-            cardInfo = scryfall.doRequest(url)
-            if cardInfo['object'] == 'error':
-                print("Scryfall couldn't find "+url+"!")
-                print(cardInfo)
+        info("Processing card: " + line[:-1])
+        try:
+            if queue.flipperQueue:
+                queue.flipperQueue.put({'type':'message','text':'Processing line ('+str(lineNumber)+'/'+str(lineCount)+')'})
+            lineNumber += 1
+            # Checking if we are in sideboard territory.
+            if line.strip().lower() == 'sideboard:':
+                print('Switching to sideboard')
+                sideboard = True
                 continue
-            processedCard, extra = generateProcessedCardEntryFromCardInfo(cardInfo)
-        elif re.search('(\.jpg|\.png)$', cardName):
-            # Custom card!
-            name = ''.join(cardName.split('.')[:-1])
-            imageName = 'imageCache/' + cardName.strip()
-            processedCard = {'name':name, 'set':'custom', 'number':'1', 'image_name':imageName}
-            extra = []
-        else:
-            # It's just a card name!
-            processedCard, extra = generateProcessedCardEntry(cardName, reprint, basicSet);
+            cardName, count = parseDecklistLine(line.strip())
+            if cardName == None:
+                print('Skipping empty line')
+                continue
 
-        if processedCard != None:
-            print('Found card ' + processedCard['name'])
-            for i in range(count):
-                if sideboard:
-                    processedDecklistSideboard.append(processedCard)
-                else:
-                    processedDecklist.append(processedCard)
-            processedFlipCards += extra
-        else:
-            print("Couldn't find card, line: " +  line)
+            if re.match('https://scryfall.com', cardName):
+                # It's a URL!
+                url = 'https://api.' + cardName[8:].replace('card','cards')
+                cardInfo = scryfall.doRequest(url)
+                print("Card info: ", cardInfo)
+                if cardInfo['object'] == 'error':
+                    print("Scryfall couldn't find "+url+"!")
+                    continue
+                processedCard, extra = generateProcessedCardEntryFromCardInfo(cardInfo)
+            elif re.search('(\.jpg|\.png)$', cardName):
+                # Custom card!
+                name = ''.join(cardName.split('.')[:-1])
+                imageName = 'imageCache/' + cardName.strip()
+                processedCard = {'name':name, 'set':'custom', 'number':'1', 'image_name':imageName}
+                extra = []
+            else:
+                # It's just a card name!
+                processedCard, extra = generateProcessedCardEntry(cardName, reprint, basicSet)
 
+            if processedCard != None:
+                print('Found card ' + processedCard['name'])
+                for i in range(count):
+                    if sideboard:
+                        processedDecklistSideboard.append(processedCard)
+                    else:
+                        processedDecklist.append(processedCard)
+                processedFlipCards += extra
+            else:
+                print("Couldn't find card, line: " +  line)
+        except Exception as e:
+            errorMessage = 'Error: ' + sys.exc_info()[0].__name__
+            queue.sendMessage({'type': 'error', 'text': errorMessage})
+            error(errorMessage)
+            traceback.print_tb(sys.exc_info()[2])
+            if not ignore_missing:
+                raise e
     return (processedDecklist, processedDecklistSideboard, processedFlipCards)
 
 def parseDecklistLine(line):
@@ -152,6 +162,8 @@ def generateProcessedCardEntryFromCardInfo(cardInfo, cardName=None):
     elif cardInfo['layout'] == 'meld':
         #Goddamn meld cards god damn them all. No cool tricks here, just treat them as double-faced cards.
         frontFaceUrl = stripUselessNumbers(cardInfo['image_uris']['large'])
+
+        print("all_parts: ", cardInfo['all_parts'])
         cardEntry['image_url'] = frontFaceUrl
         extraCardUrl = ""
         for part in cardInfo['all_parts']:
@@ -193,14 +205,17 @@ def generateProcessedCardEntry(cardName, reprint, basicSet=None):
         else:
             return (basics['guru'][cardName.lower()],[])
 
+    # response = scryfall.doRequest('https://api.scryfall.com/cards/search', {'q': cardName})
+
     if reprint:
-        response = scryfall.doRequest('https://api.scryfall.com/cards/search',{'q':'!"'+cardName+'"'})
+        response = scryfall.doRequest('https://api.scryfall.com/cards/search',{'q':'!"'+cardName+'" include:extras'})
     else:
-        response = scryfall.doRequest('https://api.scryfall.com/cards/search',{'q':'!"'+cardName+'" not:reprint'})
+        response = scryfall.doRequest('https://api.scryfall.com/cards/search',{'q':'!"'+cardName+'" not:reprint include:extras'})
 
 
     if response['object'] == 'error':
         print("Scryfall couldn't find "+cardName+"!")
+        print("Response: ", response)
         return (None,None)
 
     cardInfo = response['data'][0]

@@ -6,7 +6,7 @@ import flipper
 import threading
 from queue import Queue
 from deckconverter import queue
-from PIL import ImageTk, Image
+from pil import ImageTk, Image
 import json
 
 class FlipperGui(tk.Frame):

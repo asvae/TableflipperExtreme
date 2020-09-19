@@ -6,7 +6,8 @@ from gimgurpython import ImgurClient
 import dropbox
 import os
 
-def convertDecklistToJSON(decklist, deckName, hires, reprint, nocache=False, imgurId=None, dropboxToken=None, output='', basicSet=None, hostUrl=None):
+def convertDecklistToJSON(decklist, deckName, hires, reprint, nocache=False, imgurId=None, dropboxToken=None, output='', basicSet=None,
+                          hostUrl=None, ignore_missing=None):
     """
     Converts a given decklist to the JSON format used by Tabletop Simulator, as well
     as generating the required images. The decklist is assumed to be a list of strings.
@@ -14,7 +15,7 @@ def convertDecklistToJSON(decklist, deckName, hires, reprint, nocache=False, img
     if (nocache):
         scryfall.bustCache()
 
-    processedDecklist,processedDecklistSideboard,processedExtraCards = processor.processDecklist(decklist, reprint, basicSet)
+    processedDecklist,processedDecklistSideboard,processedExtraCards = processor.processDecklist(decklist, reprint, basicSet, ignore_missing)
 
     if (nocache == False):
         scryfall.dumpCacheToFile()
@@ -28,20 +29,6 @@ def convertDecklistToJSON(decklist, deckName, hires, reprint, nocache=False, img
         posX += 4.0
     if (processedExtraCards):
         deckObjects.append(generateDeckObjectFromProcessedDecklist(processedExtraCards, deckName+'-extra', posX, hires, doubleSided=True, imgurId=imgurId, dropboxToken=dropboxToken, output=output, hostUrl=hostUrl))
-
-    return {'ObjectStates':deckObjects}
-
-def convertSetToDraftJSON(setName, packCount, hires, imgurId, dropboxToken, output, basicSet):
-    draftPackLists = generateDraftPackLists(setName, packCount)
-
-    deckName = setName + '-pack-'
-    packCount = 1
-    posX = 0.0
-    deckObjects = []
-    for packList in draftPackLists:
-        deckObjects.append(generateDeckObjectFromProcessedDeckList(packList, deckName+str(packCount), posX, False, imgurId, dropboxToken, output))
-        packCount += 1
-        posX += 4.0
 
     return {'ObjectStates':deckObjects}
 
@@ -62,6 +49,20 @@ def generateDeckObjectFromProcessedDecklist(processedDecklist, deckName, posX, h
                 imagePath = os.path.join(output,imageName)
                 os.remove(imagePath)
     return deckObject
+
+def convertSetToDraftJSON(setName, packCount, hires, imgurId, dropboxToken, output, basicSet):
+    draftPackLists = generateDraftPackLists(setName, packCount)
+
+    deckName = setName + '-pack-'
+    packCount = 1
+    posX = 0.0
+    deckObjects = []
+    for packList in draftPackLists:
+        deckObjects.append(generateDeckObjectFromProcessedDecklist(packList, deckName+str(packCount), posX, False, imgurId, dropboxToken, output))
+        packCount += 1
+        posX += 4.0
+
+    return {'ObjectStates':deckObjects}
 
 
 def createDeckObject(processedDecklist, deckName, deckImageNames, posX, output='', imgurId=None, dropboxToken=None, hostUrl=None):

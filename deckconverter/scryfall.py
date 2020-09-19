@@ -10,6 +10,7 @@ def doRequest(url, params=None):
     initialized by reading the scryfallCache.json file. Any request is first checked from the cache
     before doing the actual request.
     """
+    # print("Url start: ", url)
     global scryfallCache
     if scryfallCache == None:
         if os.path.isfile('scryfallCache.json'):
@@ -27,7 +28,7 @@ def doRequest(url, params=None):
     if cacheKey in scryfallCache.keys():
         print ('Cache hit!')
         return scryfallCache[cacheKey]
-
+    print("Url: ", url, "\nParams: ", params)
     response = requests.get(url,params).json()
     if response['object'] != 'error':
         scryfallCache[cacheKey] = response
